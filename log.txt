@@ -1,0 +1,101 @@
+ERROS:O erro ocorre porque o tipo ESP8266WebServer não tem o método available(). Em vez disso, o método available() deve ser chamado no objeto WiFiServer que é usado pelo ESP8266WebServer. Você pode corrigir esse erro substituindo server.available() por server.server.available().
+
+Além disso, há um erro de sintaxe na linha 67. O código <"section"> não é válido. Você pode corrigir substituindo essa linha por client.println("<section>");.
+
+
+
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+
+#define ledPin D2
+bool ledStatus = false;
+#include "pagina.h"
+
+const char* ssid = "IoT";
+const char* password = "Techno123";
+IPAddress ip(192, 168, 1, 105); // new static IP address
+IPAddress gateway(192, 168, 1, 1); // new gateway address
+IPAddress subnet(255, 255, 255, 0); // new subnet mask
+ESP8266WebServer server(300);
+
+void requisicao(String);
+
+void setup() {
+  Serial.begin(115200);
+  delay(10);
+
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, ledStatus);
+
+  Serial.println("");
+  Serial.println("");
+  Serial.print("Conectando...");
+  Serial.print(ssid);
+
+  WiFi.config(ip, gateway, subnet);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.print("Conectado");
+  Serial.println(ssid);
+  server.begin();
+  Serial.println("Server Iniciado");
+
+  Serial.print("IP:");
+  Serial.print("http://");
+  Serial.println(WiFi.localIP());
+}
+void loop(){
+  WiFiClient client = server.available();
+    if (!client){return;} 
+
+  Serial.println("Novo Cliente");
+  while(!client.available()){
+    delay(1);
+  }
+  String request = client.readStringUntil('\r');
+  requisicao(request);
+  client.flush();
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-Type: text/html");
+  client.println("");
+  client.println(pagina);
+
+  ///itens html   
+
+  client.println(<"section>");
+  client.println("<div class='item-head'>");
+  client.println("<div class='titulo'>LED AZUL</div>");
+  ledStatus ? client.println("<div class='estado on'>on</div>") : client.println("<div class='estado off'>off</div>");
+  client.println("</div>");
+  client.println("<div class='acoes'>");
+  client.println("<a href='/LED=ON' class='ligar'>ligar</a>");
+  client.println("<a href='/LED=ON' class='desligar'>desligar</a>");
+  client.println("</div>");
+  client.println("<section>");
+  ///itens finalizados
+  ///rodape
+  client.println(rodape);
+  delay(1);  
+  Serial.println("Desconectado");
+  Serial.println("");
+}
+
+void requisicao(String request){
+  if(request.indexOf("/LED=ON") != -1){
+    ledStatus = true;
+    digitalWrite(ledPin, ledStatus);    
+  }
+  if(request.indexOf("/LED=OFF") != -1){
+    ledStatus = false;
+    digitalWrite(ledPin, ledStatus);
+  }
+}
+
